@@ -1,8 +1,8 @@
+use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::request::{
-    EventsRequest, MarketBySlugRequest, MarketsRequest, SearchRequest,
+    EventBySlugRequest, EventsRequest, MarketBySlugRequest, MarketsRequest, SearchRequest,
 };
 use polymarket_client_sdk::gamma::types::response::{Event, Market, SearchResults};
-use polymarket_client_sdk::gamma::Client;
 
 /// Wrapper around the Polymarket Gamma API client.
 pub struct GammaClient {
@@ -33,6 +33,15 @@ impl GammaClient {
             .market_by_slug(&request)
             .await
             .map_err(|e| format!("Failed to fetch market '{slug}': {e}"))
+    }
+
+    /// Get an event by its slug.
+    pub async fn get_event_by_slug(&self, slug: &str) -> Result<Event, String> {
+        let request = EventBySlugRequest::builder().slug(slug).build();
+        self.client
+            .event_by_slug(&request)
+            .await
+            .map_err(|e| format!("Failed to fetch event '{slug}': {e}"))
     }
 
     /// List active events ordered by volume (descending).

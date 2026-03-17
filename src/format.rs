@@ -46,7 +46,8 @@ pub fn format_search_results(results: &SearchResults, query: &str) -> String {
                 if let Some(market) = markets.first() {
                     if let Some(prices) = &market.outcome_prices {
                         if let Some(yes_price) = prices.first() {
-                            output.push_str(&format!("  |  Yes: {}", format_price_cents(yes_price)));
+                            output
+                                .push_str(&format!("  |  Yes: {}", format_price_cents(yes_price)));
                         }
                     }
                 }
@@ -148,7 +149,74 @@ pub fn format_market_detail(market: &Market) -> String {
     output
 }
 
-/// Format trending events list.
+/// Format a detailed event view with all its markets.
+pub fn format_event_detail(event: &Event) -> String {
+    let title = event.title.as_deref().unwrap_or("Untitled Event");
+    let mut output = format!("{title}\n");
+    output.push_str(&"─".repeat(title.len().min(40)));
+    output.push('\n');
+
+    if let Some(desc) = &event.description {
+        let truncated = if desc.len() > 500 {
+            format!("{}...", &desc[..497])
+        } else {
+            desc.clone()
+        };
+        output.push_str(&format!("\n{truncated}\n"));
+    }
+
+    output.push('\n');
+
+    if let Some(volume) = &event.volume {
+        output.push_str(&format!("Total Volume: {}\n", format_volume(volume)));
+    }
+    if let Some(liquidity) = &event.liquidity {
+        output.push_str(&format!("Total Liquidity: {}\n", format_volume(liquidity)));
+    }
+    if let Some(end_date) = &event.end_date {
+        output.push_str(&format!("End Date: {}\n", end_date.format("%b %-d, %Y")));
+    }
+
+    // Show all markets in this event
+    if let Some(markets) = &event.markets {
+        if !markets.is_empty() {
+            output.push_str(&format!("\nMarkets ({}):\n", markets.len()));
+            for (i, market) in markets.iter().enumerate() {
+                let question = market.question.as_deref().unwrap_or("Unknown");
+                output.push_str(&format!("\n{}. {}\n", i + 1, question));
+
+                if let Some(prices) = &market.outcome_prices {
+                    if let Some(outcomes) = &market.outcomes {
+                        output.push_str("   Prices: ");
+                        let price_str: Vec<String> = outcomes
+                            .iter()
+                            .zip(prices.iter())
+                            .map(|(name, price)| format!("{}: {}", name, format_price_cents(price)))
+                            .collect();
+                        output.push_str(&price_str.join(", "));
+                        output.push('\n');
+                    }
+                }
+
+                if let Some(volume) = &market.volume {
+                    output.push_str(&format!("   Volume: {}\n", format_volume(volume)));
+                }
+
+                if let Some(slug) = &market.slug {
+                    output.push_str(&format!("   Slug: {slug}\n"));
+                }
+            }
+        }
+    }
+
+    if let Some(slug) = &event.slug {
+        output.push_str(&format!("\npolymarket.com/event/{slug}"));
+    }
+
+    output
+}
+
+/// Format the top trending events.
 pub fn format_trending_events(events: &[Event]) -> String {
     if events.is_empty() {
         return String::from("No trending markets found at the moment.");
