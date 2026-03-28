@@ -5,9 +5,7 @@ use crate::polymarket::gamma::GammaClient;
 pub async fn handle(gamma: &GammaClient, args: &str) -> String {
     let query = args.trim();
     if query.is_empty() {
-        return String::from(
-            "Usage: /search <query>\n\nExample: /search bitcoin",
-        );
+        return String::from("Usage: /search <query>\n\nExample: /search bitcoin");
     }
 
     match gamma.search(query).await {

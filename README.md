@@ -2,13 +2,16 @@
 
 A Nostr bot that bridges Polymarket prediction market data into the Nostr protocol. Query prediction markets, prices, and trending events through direct messages or public mentions.
 
-## Features (Phase 1)
+## Features (Phase 1 + Phase 2)
 
 - **Search Markets**: Find prediction markets by keyword
 - **Get Prices**: Check current Yes/No prices for any market
 - **Trending Markets**: List top active markets by volume
 - **Market Details**: Get comprehensive information about any market
-- **Privacy-First**: Supports NIP-17 Gift Wrap private DMs
+- **User Alerts**: Create, list, pause/resume, remove, and test price alerts
+- **Real-Time Notifications**: Background alert evaluation with private DM delivery
+- **Persistence**: Alert subscriptions and trigger state survive restarts (SQLite)
+- **Privacy-First**: Supports NIP-17 Gift Wrap private DMs (with NIP-04 compatibility)
 
 ## Requirements
 
@@ -23,7 +26,7 @@ A Nostr bot that bridges Polymarket prediction market data into the Nostr protoc
 1. **Clone and build:**
 
 ```bash
-cd /Users/ericrodriguez/src/rust/polynostr
+cd [WORK_DIR]/polynostr
 cargo build --release
 ```
 
@@ -53,11 +56,17 @@ The bot will print its public key (npub) on startup. Save this to send it messag
 Send any of these commands via DM or mention:
 
 ```
-/help              Show available commands
-/search <query>    Search for prediction markets
-/price <slug>      Get current price for a market
-/market <slug>     Detailed market information
-/trending          Top active markets
+/help                           Show available commands
+/search <query>                 Search for prediction markets
+/price <slug>                   Get current price for a market
+/market <slug>                  Detailed market information
+/trending                       Top active markets
+/alert add <slug> <rule> <v>    Create alert (rules: above|below|move)
+/alert list                     List your alerts
+/alert remove <alert-id>        Remove alert
+/alert pause <alert-id>         Pause alert
+/alert resume <alert-id>        Resume alert
+/alert test <alert-id>          Send test notification
 ```
 
 ### Examples
@@ -82,6 +91,27 @@ Send any of these commands via DM or mention:
 /market will-bitcoin-hit-100k
 ```
 
+**Create an alert when price crosses above 52¢:**
+```
+/alert add will-bitcoin-hit-100k above 52
+```
+
+**List your alerts:**
+```
+/alert list
+```
+
+**Pause and resume an alert:**
+```
+/alert pause <alert-id>
+/alert resume <alert-id>
+```
+
+**Send a test alert notification:**
+```
+/alert test <alert-id>
+```
+
 ### How to Test
 
 1. Start the bot and note its npub (public key) from the logs
@@ -90,23 +120,26 @@ Send any of these commands via DM or mention:
 4. Try the example commands above
 
 The bot supports both:
-- **Private DMs (NIP-17)**: Send encrypted direct messages for private queries
-- **Public mentions**: Mention the bot's npub in a public note
+- **Private DMs (NIP-17)**: Send encrypted direct messages for private queries and alert notifications
+- **Public mentions**: Mention the bot's npub in a public note (commands still supported)
 
 ## Architecture
 
 ```
 Nostr Relays ←WebSocket→ polynostr bot ←HTTP→ Polymarket APIs
                          │
-                         ├─ nostr-sdk v0.44 (NIP-17 DMs)
+                         ├─ nostr-sdk v0.44 (NIP-17/NIP-04 messaging)
+                         ├─ alert manager (rules, evaluator, notifier)
+                         │   ├─ market update source (WebSocket-first, polling fallback)
+                         │   └─ SQLite persistence (subscriptions + trigger state)
                          └─ polymarket-client-sdk v0.4 (Gamma API)
 ```
 
 ### APIs Used
 
-- **Polymarket Gamma API**: Public market data, search, events (no auth required)
+- **Polymarket Gamma API**: Public market data, search, events, and alert polling fallback (no auth required)
 - **Polymarket Data API**: Volume, open interest (future phase)
-- **Nostr Protocol**: NIP-01 (basic), NIP-17 (private DMs)
+- **Nostr Protocol**: NIP-01 (basic), NIP-17 (private DMs), NIP-04 (compatibility path)
 
 ## Development
 
@@ -114,22 +147,56 @@ Nostr Relays ←WebSocket→ polynostr bot ←HTTP→ Polymarket APIs
 
 ```
 src/
-├── main.rs           # Entry point
+├── main.rs           # Entry point and alert manager wiring
 ├── config.rs         # Environment configuration
 ├── bot.rs            # Event loop and message handling
-├── format.rs         # Response formatting
+├── format.rs         # Response and alert formatting
+├── alerts/           # Alerting domain and runtime
+│   ├── mod.rs
+│   ├── model.rs
+│   ├── parser.rs
+│   ├── evaluator.rs
+│   ├── notifier.rs
+│   ├── manager.rs
+│   ├── source.rs
+│   ├── error.rs
+│   └── repository/
+│       ├── mod.rs
+│       ├── memory.rs
+│       └── sqlite.rs
 ├── commands/         # Command handlers
 │   ├── mod.rs
 │   ├── help.rs
 │   ├── search.rs
 │   ├── price.rs
 │   ├── trending.rs
-│   └── market.rs
+│   ├── market.rs
+│   ├── alert_add.rs
+│   ├── alert_list.rs
+│   ├── alert_remove.rs
+│   ├── alert_pause.rs
+│   ├── alert_resume.rs
+│   └── alert_test.rs
 └── polymarket/       # Polymarket API wrappers
     ├── mod.rs
     ├── gamma.rs
     └── data.rs
 ```
+
+## Alert Configuration (Phase 2)
+
+The alert system is controlled with environment variables:
+
+- `ALERT_STREAM_ENABLED` (default: `true`)
+- `ALERT_POLL_INTERVAL_SECONDS` (default: `15`)
+- `ALERT_RECONNECT_BACKOFF_INITIAL_SECONDS` (default: `2`)
+- `ALERT_RECONNECT_BACKOFF_MAX_SECONDS` (default: `60`)
+- `ALERT_MAX_PER_USER` (default: `25`)
+- `ALERT_COOLDOWN_SECONDS` (default: `120`)
+- `ALERT_HYSTERESIS_BPS` (default: `50`)
+- `ALERT_NOTIFICATIONS_PER_MINUTE` (default: `10`)
+- `ALERT_DB_PATH` (default: `alerts.sqlite3`)
+
 
 ### Logging
 
@@ -144,7 +211,7 @@ RUST_LOG=polynostr=trace cargo run  # Very verbose
 ## Roadmap
 
 - **Phase 1** (✅ Complete): Basic read-only bot with search, price, trending commands
-- **Phase 2** (Planned): Real-time price alerts via WebSocket streaming
+- **Phase 2** (✅ Complete): Real-time price alerts with persistent subscriptions and DM notifications
 - **Phase 3** (Planned): User portfolio tracking by wallet address
 - **Phase 4** (Planned): Trading commands with server-side EVM signer
 - **Phase 5** (Planned): Optional web dashboard

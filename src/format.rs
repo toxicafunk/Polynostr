@@ -1,5 +1,8 @@
+use chrono::{DateTime, Utc};
 use polymarket_client_sdk::gamma::types::response::{Event, Market, SearchResults};
 use polymarket_client_sdk::types::Decimal;
+
+use crate::alerts::model::AlertSubscription;
 
 /// Format a price (Decimal from 0.0 to 1.0) as cents (e.g., "52¢").
 fn format_price_cents(price: &Decimal) -> String {
@@ -19,7 +22,6 @@ fn format_volume(volume: &Decimal) -> String {
     }
 }
 
-/// Format search results for nostr output.
 pub fn format_search_results(results: &SearchResults, query: &str) -> String {
     let mut output = format!("Search results for \"{query}\":\n\n");
 
@@ -41,7 +43,6 @@ pub fn format_search_results(results: &SearchResults, query: &str) -> String {
             output.push_str(&format!("{}. {}\n", i + 1, title));
             output.push_str(&format!("   Volume: {volume}"));
 
-            // Show first market price if available
             if let Some(markets) = &event.markets {
                 if let Some(market) = markets.first() {
                     if let Some(prices) = &market.outcome_prices {
@@ -62,7 +63,6 @@ pub fn format_search_results(results: &SearchResults, query: &str) -> String {
     output.trim_end().to_owned()
 }
 
-/// Format a single market for a price query.
 pub fn format_market_price(market: &Market) -> String {
     let title = market.question.as_deref().unwrap_or("Untitled Market");
     let mut output = format!("{title}\n\n");
@@ -98,7 +98,6 @@ pub fn format_market_price(market: &Market) -> String {
     output
 }
 
-/// Format a detailed market view.
 pub fn format_market_detail(market: &Market) -> String {
     let title = market.question.as_deref().unwrap_or("Untitled Market");
     let mut output = format!("{title}\n");
@@ -149,7 +148,6 @@ pub fn format_market_detail(market: &Market) -> String {
     output
 }
 
-/// Format a detailed event view with all its markets.
 pub fn format_event_detail(event: &Event) -> String {
     let title = event.title.as_deref().unwrap_or("Untitled Event");
     let mut output = format!("{title}\n");
@@ -177,7 +175,6 @@ pub fn format_event_detail(event: &Event) -> String {
         output.push_str(&format!("End Date: {}\n", end_date.format("%b %-d, %Y")));
     }
 
-    // Show all markets in this event
     if let Some(markets) = &event.markets {
         if !markets.is_empty() {
             output.push_str(&format!("\nMarkets ({}):\n", markets.len()));
@@ -216,7 +213,6 @@ pub fn format_event_detail(event: &Event) -> String {
     output
 }
 
-/// Format the top trending events.
 pub fn format_trending_events(events: &[Event]) -> String {
     if events.is_empty() {
         return String::from("No trending markets found at the moment.");
@@ -235,7 +231,6 @@ pub fn format_trending_events(events: &[Event]) -> String {
         output.push_str(&format!("{}. {}\n", i + 1, title));
         output.push_str(&format!("   Volume: {volume}"));
 
-        // Show first market price if available
         if let Some(markets) = &event.markets {
             if let Some(market) = markets.first() {
                 if let Some(prices) = &market.outcome_prices {
@@ -253,4 +248,69 @@ pub fn format_trending_events(events: &[Event]) -> String {
     }
 
     output.trim_end().to_owned()
+}
+
+pub fn format_alert_created(alert: &AlertSubscription) -> String {
+    format!(
+        "Alert created\n\nID: {}\nMarket: {}\nRule: {}\nStatus: active",
+        alert.id,
+        alert.slug,
+        alert.rule.describe()
+    )
+}
+
+pub fn format_alert_list(alerts: &[AlertSubscription]) -> String {
+    if alerts.is_empty() {
+        return "You have no alerts configured. Use: alert add <slug> <above|below|move> <value>"
+            .to_owned();
+    }
+
+    let mut out = String::from("Your alerts:\n\n");
+    for (idx, alert) in alerts.iter().enumerate() {
+        out.push_str(&format!(
+            "{}. {}\n   ID: {}\n   Rule: {}\n   Status: {:?}\n\n",
+            idx + 1,
+            alert.slug,
+            alert.id,
+            alert.rule.describe(),
+            alert.status
+        ));
+    }
+    out.trim_end().to_owned()
+}
+
+pub fn format_alert_removed(alert_id: &str) -> String {
+    format!("Alert removed: {alert_id}")
+}
+
+pub fn format_alert_paused(alert_id: &str) -> String {
+    format!("Alert paused: {alert_id}")
+}
+
+pub fn format_alert_resumed(alert_id: &str) -> String {
+    format!("Alert resumed: {alert_id}")
+}
+
+pub fn format_alert_trigger(
+    alert: &AlertSubscription,
+    price: f64,
+    triggered_at: DateTime<Utc>,
+) -> String {
+    format!(
+        "Price alert triggered\n\nMarket: {}\nRule: {}\nCurrent Price: {:.2}¢\nTriggered: {}\nAlert ID: {}",
+        alert.slug,
+        alert.rule.describe(),
+        price * 100.0,
+        triggered_at.format("%Y-%m-%d %H:%M:%SZ"),
+        alert.id
+    )
+}
+
+pub fn format_alert_test(alert: &AlertSubscription) -> String {
+    format!(
+        "Alert test notification\n\nMarket: {}\nRule: {}\nAlert ID: {}",
+        alert.slug,
+        alert.rule.describe(),
+        alert.id
+    )
 }
