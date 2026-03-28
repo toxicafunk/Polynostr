@@ -5,6 +5,7 @@ use polymarket_client_sdk::gamma::types::request::{
 use polymarket_client_sdk::gamma::types::response::{Event, Market, SearchResults};
 
 /// Wrapper around the Polymarket Gamma API client.
+#[derive(Clone)]
 pub struct GammaClient {
     client: Client,
 }

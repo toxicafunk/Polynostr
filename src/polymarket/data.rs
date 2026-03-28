@@ -1,6 +1,6 @@
+use polymarket_client_sdk::data::Client;
 use polymarket_client_sdk::data::types::request::OpenInterestRequest;
 use polymarket_client_sdk::data::types::response::OpenInterest;
-use polymarket_client_sdk::data::Client;
 
 /// Wrapper around the Polymarket Data API client.
 pub struct DataClient {
