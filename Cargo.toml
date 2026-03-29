@@ -3,6 +3,7 @@ name = "polynostr"
 version = "0.1.0"
 edition = "2024"
 rust-version = "1.88.0"
+build = "build.rs"
 
 [dependencies]
 nostr-sdk = { version = "0.44", features = ["nip04", "nip59"] }

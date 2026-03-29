@@ -31,6 +31,15 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
 
     let config = Config::load()?;
 
+    let version = env!("CARGO_PKG_VERSION");
+    let commit_hash = option_env!("GIT_COMMIT_SHORT_HASH").unwrap_or("unknown");
+
+    info!(
+        version = %version,
+        commit_hash = %commit_hash,
+        "Polynostr build info"
+    );
+
     let bech32_pubkey = config.keys.public_key().to_bech32()?;
     info!(pubkey = %bech32_pubkey, "Polynostr bot starting");
 

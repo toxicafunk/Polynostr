@@ -1,5 +1,3 @@
-use std::cmp::Ordering;
-
 use chrono::Utc;
 use polymarket_client_sdk::gamma::Client;
 use polymarket_client_sdk::gamma::types::request::{
@@ -48,7 +46,7 @@ impl GammaClient {
             .map_err(|e| format!("Failed to fetch event '{slug}': {e}"))
     }
 
-    /// List active events ranked by 24h volume (descending), with total volume fallback.
+    /// List active events ordered by 24h volume (descending).
     pub async fn list_active_events(&self, limit: u32) -> Result<Vec<Event>, String> {
         let fetch_limit = ((limit as i32) * 5).min(200);
         let request = EventsRequest::builder()
@@ -56,7 +54,7 @@ impl GammaClient {
             .closed(false)
             .archived(false)
             .limit(fetch_limit)
-            .order(vec!["volume".to_owned()])
+            .order(vec!["volume24hr".to_owned()])
             .ascending(false)
             .build();
 
@@ -70,25 +68,13 @@ impl GammaClient {
         events.retain(|event| {
             let is_closed = event.closed.unwrap_or(false);
             let is_archived = event.archived.unwrap_or(false);
-            let is_expired = event
+            let has_future_end_date = event
                 .end_date
                 .as_ref()
-                .map(|end_date| end_date < &now)
+                .map(|end_date| end_date > &now)
                 .unwrap_or(false);
 
-            !is_closed && !is_archived && !is_expired
-        });
-
-        events.sort_by(|a, b| {
-            let a_volume = a.volume_24hr.as_ref().or(a.volume.as_ref());
-            let b_volume = b.volume_24hr.as_ref().or(b.volume.as_ref());
-
-            match (a_volume, b_volume) {
-                (Some(a), Some(b)) => b.partial_cmp(a).unwrap_or(Ordering::Equal),
-                (Some(_), None) => Ordering::Less,
-                (None, Some(_)) => Ordering::Greater,
-                (None, None) => Ordering::Equal,
-            }
+            !is_closed && !is_archived && has_future_end_date
         });
 
         events.truncate(limit as usize);
