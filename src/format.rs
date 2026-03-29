@@ -222,14 +222,21 @@ pub fn format_trending_events(events: &[Event]) -> String {
 
     for (i, event) in events.iter().take(10).enumerate() {
         let title = event.title.as_deref().unwrap_or("Untitled");
-        let volume = event
+        let volume_24h = event
+            .volume_24hr
+            .as_ref()
+            .map(format_volume)
+            .unwrap_or_else(|| String::from("—"));
+        let total_volume = event
             .volume
             .as_ref()
             .map(format_volume)
             .unwrap_or_else(|| String::from("—"));
 
         output.push_str(&format!("{}. {}\n", i + 1, title));
-        output.push_str(&format!("   Volume: {volume}"));
+        output.push_str(&format!(
+            "   Vol 24h: {volume_24h}  |  Total: {total_volume}"
+        ));
 
         if let Some(markets) = &event.markets {
             if let Some(market) = markets.first() {
