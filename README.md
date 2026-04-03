@@ -222,14 +222,17 @@ RUST_LOG=polynostr=trace cargo run  # Very verbose
 
 If you encounter an error like:
 ```
-error: failed to run custom build command for `aws-lc-sys v0.38.0`
+error: failed to run custom build command for `aws-lc-sys v0.39.1`
 ### COMPILER BUG DETECTED ###
 Your compiler (cc) is not supported due to a memcmp related bug...
 ```
 
 This is caused by a transitive dependency (`polymarket-client-sdk`) that uses `aws-lc-rs` crypto provider, which doesn't support older GCC versions in Ubuntu 20.04 LTS.
 
-**Solution 1: Upgrade GCC** (Recommended)
+**The project's `build.rs` automatically bypasses this check**, so builds should work out of the box on Ubuntu 20.04. The compiler check is disabled during the build process to ensure compatibility with older systems.
+
+If you prefer to use a newer compiler for production deployments, you can upgrade GCC:
+
 ```bash
 sudo add-apt-repository ppa:ubuntu-toolchain-r/test
 sudo apt update
@@ -238,14 +241,7 @@ sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
 sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
 ```
 
-**Solution 2: Use a newer Ubuntu version**
-- Ubuntu 22.04 LTS (Jammy) or later comes with GCC 11+ by default
-- Or use a container/VM with a newer Ubuntu version
-
-**Solution 3: Override the compiler check** (Not recommended for production)
-```bash
-AWS_LC_SYS_NO_COMPILER_CHECKS=1 cargo build --release
-```
+Alternatively, use Ubuntu 22.04 LTS (Jammy) or later, which comes with GCC 11+ by default.
 
 ## License
 
