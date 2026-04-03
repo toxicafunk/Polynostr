@@ -19,7 +19,7 @@ A Nostr bot that bridges Polymarket prediction market data into the Nostr protoc
 - A Nostr secret key (nsec)
 - Access to Nostr relays
 
-**Note**: The project uses Rustls 0.23 with the `aws-lc-rs` crypto provider, which is automatically installed at runtime.
+**Note**: The project uses Rustls 0.23 with the `ring` crypto provider for maximum compatibility across different systems and compilers.
 
 ## Setup
 
@@ -215,6 +215,37 @@ RUST_LOG=polynostr=trace cargo run  # Very verbose
 - **Phase 3** (Planned): User portfolio tracking by wallet address
 - **Phase 4** (Planned): Trading commands with server-side EVM signer
 - **Phase 5** (Planned): Optional web dashboard
+
+## Troubleshooting
+
+### Build fails on Ubuntu 20.04 LTS with GCC compiler error
+
+If you encounter an error like:
+```
+error: failed to run custom build command for `aws-lc-sys v0.38.0`
+### COMPILER BUG DETECTED ###
+Your compiler (cc) is not supported due to a memcmp related bug...
+```
+
+This is caused by a transitive dependency (`polymarket-client-sdk`) that uses `aws-lc-rs` crypto provider, which doesn't support older GCC versions in Ubuntu 20.04 LTS.
+
+**Solution 1: Upgrade GCC** (Recommended)
+```bash
+sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+sudo apt update
+sudo apt install gcc-11 g++-11
+sudo update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 110
+sudo update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 110
+```
+
+**Solution 2: Use a newer Ubuntu version**
+- Ubuntu 22.04 LTS (Jammy) or later comes with GCC 11+ by default
+- Or use a container/VM with a newer Ubuntu version
+
+**Solution 3: Override the compiler check** (Not recommended for production)
+```bash
+AWS_LC_SYS_NO_COMPILER_CHECKS=1 cargo build --release
+```
 
 ## License
 
