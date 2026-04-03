@@ -22,6 +22,29 @@ fn format_volume(volume: &Decimal) -> String {
     }
 }
 
+/// Format a duration as human-readable time (e.g., "5h 23m", "45m", "<1m").
+fn format_duration(duration: chrono::Duration) -> String {
+    let total_seconds = duration.num_seconds();
+
+    if total_seconds < 0 {
+        return String::from("Closed");
+    }
+
+    if total_seconds < 60 {
+        return String::from("<1m");
+    }
+
+    let hours = total_seconds / 3600;
+    let minutes = (total_seconds % 3600) / 60;
+
+    if hours > 0 {
+        format!("{}h {}m", hours, minutes)
+    } else {
+        format!("{}m", minutes)
+    }
+}
+
+
 pub fn format_search_results(results: &SearchResults, query: &str) -> String {
     let mut output = format!("Search results for \"{query}\":\n\n");
 
@@ -257,6 +280,69 @@ pub fn format_trending_events(events: &[Event]) -> String {
     output.trim_end().to_owned()
 }
 
+/// Format events closing soon into a user-friendly message.
+pub fn format_closing_events(events: &[Event]) -> String {
+    if events.is_empty() {
+        return String::from("No markets closing in the next 24 hours.");
+    }
+
+    let mut output = String::from("Markets Closing Soon:\n\n");
+    let now = Utc::now();
+
+    for (i, event) in events.iter().enumerate() {
+        let title = event
+            .title
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("Unknown Event");
+
+        // Calculate time until close
+        let time_left = if let Some(end_date) = &event.end_date {
+            let duration = *end_date - now;
+            format_duration(duration)
+        } else {
+            String::from("Unknown")
+        };
+
+        // Get first market's first outcome price
+        let price = event
+            .markets
+            .as_ref()
+            .and_then(|markets| markets.first())
+            .and_then(|market| market.outcome_prices.as_ref())
+            .and_then(|prices| prices.first())
+            .map(|price| format_price_cents(price))
+            .unwrap_or_else(|| String::from("N/A"));
+
+        // Get 24h volume
+        let vol_24h = event
+            .volume_24hr
+            .as_ref()
+            .map(format_volume)
+            .unwrap_or_else(|| String::from("N/A"));
+
+        // Get slug
+        let slug = event
+            .slug
+            .as_ref()
+            .map(|s| s.as_str())
+            .unwrap_or("unknown");
+
+        output.push_str(&format!(
+            "{}. {}\n   Closes in {}  |  Vol 24h: {}  |  Yes: {}\n   Slug: {}\n\n",
+            i + 1,
+            title,
+            time_left,
+            vol_24h,
+            price,
+            slug
+        ));
+    }
+
+    output.trim_end().to_owned()
+}
+
+
 pub fn format_alert_created(alert: &AlertSubscription) -> String {
     format!(
         "Alert created\n\nID: {}\nMarket: {}\nRule: {}\nStatus: active",
@@ -321,3 +407,65 @@ pub fn format_alert_test(alert: &AlertSubscription) -> String {
         alert.id
     )
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::Duration;
+
+    #[test]
+    fn test_format_duration_hours_and_minutes() {
+        let duration = Duration::hours(5) + Duration::minutes(23);
+        assert_eq!(format_duration(duration), "5h 23m");
+    }
+
+    #[test]
+    fn test_format_duration_minutes_only() {
+        let duration = Duration::minutes(45);
+        assert_eq!(format_duration(duration), "45m");
+    }
+
+    #[test]
+    fn test_format_duration_less_than_minute() {
+        let duration = Duration::seconds(30);
+        assert_eq!(format_duration(duration), "<1m");
+    }
+
+    #[test]
+    fn test_format_duration_exactly_one_minute() {
+        let duration = Duration::seconds(60);
+        assert_eq!(format_duration(duration), "1m");
+    }
+
+    #[test]
+    fn test_format_duration_negative() {
+        let duration = Duration::seconds(-100);
+        assert_eq!(format_duration(duration), "Closed");
+    }
+
+    #[test]
+    fn test_format_duration_zero_hours() {
+        let duration = Duration::minutes(5);
+        assert_eq!(format_duration(duration), "5m");
+    }
+
+    #[test]
+    fn test_format_duration_23_hours() {
+        let duration = Duration::hours(23) + Duration::minutes(59);
+        assert_eq!(format_duration(duration), "23h 59m");
+    }
+
+    #[test]
+    fn test_format_closing_events_empty() {
+        let events: Vec<Event> = vec![];
+        assert_eq!(
+            format_closing_events(&events),
+            "No markets closing in the next 24 hours."
+        );
+    }
+
+    // Note: We can't create Event instances for more complex tests because Event is a
+    // non-exhaustive struct from the SDK. The formatter logic is validated through
+    // integration testing with real API responses.
+}
+

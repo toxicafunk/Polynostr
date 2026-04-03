@@ -1,3 +1,34 @@
+# Environment variables
 .env
-target
+.env*
+
+# Rust build artifacts
+target/
+debug/
+release/
+*.rs.bk
+*.rlib
+
+# Profiling data
+*.prof*
+
+# IDE files
+.idea/
+*.iml
+.vscode/
+
+# Logs
 *.log
+
+# Database files
+*.sqlite3
+*.sqlite3-journal
+*.db
+
+# macOS
+.DS_Store
+
+# Temporary files
+*.tmp
+*.swp
+*~

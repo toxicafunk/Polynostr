@@ -4,6 +4,7 @@ pub mod alert_pause;
 pub mod alert_remove;
 pub mod alert_resume;
 pub mod alert_test;
+pub mod closing;
 pub mod help;
 pub mod market;
 pub mod price;
@@ -66,6 +67,7 @@ pub async fn handle_command(
         "/price" | "price" => price::handle(gamma, args).await,
         "/market" | "market" => market::handle(gamma, args).await,
         "/trending" | "trending" => trending::handle(gamma).await,
+        "/closing" | "closing" => closing::handle(gamma).await,
         "/help" | "help" | "/start" => help::help_text(),
         _ => format!("Unknown command: \"{}\"\n\n{}", command, help::help_text()),
     }

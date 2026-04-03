@@ -8,6 +8,7 @@ pub fn help_text() -> String {
          /price <slug>                   Get current price for a market\n\
          /market <slug>                  Detailed market information\n\
          /trending                       Top active markets\n\
+         /closing                        Markets closing in next 24 hours\n\
          /alert add <slug> <rule> <v>   Create alert (rules: above/below/move)\n\
          /alert list                     List your alerts\n\
          /alert remove <id>              Remove alert\n\
