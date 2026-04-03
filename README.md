@@ -229,7 +229,7 @@ Your compiler (cc) is not supported due to a memcmp related bug...
 
 This is caused by a transitive dependency (`polymarket-client-sdk`) that uses `aws-lc-rs` crypto provider, which doesn't support older GCC versions in Ubuntu 20.04 LTS.
 
-**The project's `build.rs` automatically bypasses this check**, so builds should work out of the box on Ubuntu 20.04. The compiler check is disabled during the build process to ensure compatibility with older systems.
+**The project includes a `.cargo/config.toml` that automatically sets the required environment variable**, so builds should work out of the box on Ubuntu 20.04. The compiler check is disabled automatically via Cargo configuration.
 
 If you prefer to use a newer compiler for production deployments, you can upgrade GCC:
 

@@ -1,0 +1,7 @@
+# Cargo configuration for polynostr
+
+# This environment variable is required for building on Ubuntu 20.04 LTS
+# and other systems with GCC < 11 due to aws-lc-sys compiler checks.
+# The transitive dependency chain: polymarket-client-sdk -> reqwest v0.13 -> aws-lc-sys
+[env]
+AWS_LC_SYS_NO_COMPILER_CHECKS = "1"
