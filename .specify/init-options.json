@@ -1,0 +1,9 @@
+{
+  "ai": "forge",
+  "branch_numbering": "sequential",
+  "here": true,
+  "integration": "forge",
+  "preset": null,
+  "script": "sh",
+  "speckit_version": "0.5.1.dev0"
+}
