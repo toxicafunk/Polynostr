@@ -2,12 +2,15 @@
 
 A Nostr bot that bridges Polymarket prediction market data into the Nostr protocol. Query prediction markets, prices, and trending events through direct messages or public mentions.
 
-## Features (Phase 1 + Phase 2)
+## Features (Phase 1 + Phase 2 + Phase 3)
 
 - **Search Markets**: Find prediction markets by keyword
 - **Get Prices**: Check current Yes/No prices for any market
 - **Trending Markets**: List top active markets by volume
 - **Market Details**: Get comprehensive information about any market
+- **Portfolio Snapshot**: View wallet portfolio value, traded markets, open positions, and recent trades
+- **Wallet Positions**: List top open positions for any wallet address
+- **Wallet Trades**: Show recent trades for any wallet address
 - **User Alerts**: Create, list, pause/resume, remove, and test price alerts
 - **Real-Time Notifications**: Background alert evaluation with private DM delivery
 - **Persistence**: Alert subscriptions and trigger state survive restarts (SQLite)
@@ -60,6 +63,9 @@ Send any of these commands via DM or mention:
 /search <query>                 Search for prediction markets
 /price <slug>                   Get current price for a market
 /market <slug>                  Detailed market information
+/portfolio <address> [limit]    Portfolio snapshot (value + positions + trades)
+/positions <address> [limit]    Open positions by wallet
+/trades <address> [limit]       Recent trades by wallet
 /trending                       Top active markets
 /alert add <slug> <rule> <v>    Create alert (rules: above|below|move)
 /alert list                     List your alerts
@@ -89,6 +95,21 @@ Send any of these commands via DM or mention:
 **Get detailed market info:**
 ```
 /market will-bitcoin-hit-100k
+```
+
+**Get a portfolio snapshot by wallet address:**
+```
+/portfolio 0x56687bf447db6ffa42ffe2204a05edaa20f55839
+```
+
+**List open positions for a wallet (limit 8):**
+```
+/positions 0x56687bf447db6ffa42ffe2204a05edaa20f55839 8
+```
+
+**List recent trades for a wallet (limit 8):**
+```
+/trades 0x56687bf447db6ffa42ffe2204a05edaa20f55839 8
 ```
 
 **Create an alert when price crosses above 52¢:**
@@ -132,13 +153,13 @@ Nostr Relays ←WebSocket→ polynostr bot ←HTTP→ Polymarket APIs
                          ├─ alert manager (rules, evaluator, notifier)
                          │   ├─ market update source (WebSocket-first, polling fallback)
                          │   └─ SQLite persistence (subscriptions + trigger state)
-                         └─ polymarket-client-sdk v0.4 (Gamma API)
+                         └─ polymarket-client-sdk v0.4 (Gamma + Data APIs)
 ```
 
 ### APIs Used
 
 - **Polymarket Gamma API**: Public market data, search, events, and alert polling fallback (no auth required)
-- **Polymarket Data API**: Volume, open interest (future phase)
+- **Polymarket Data API**: Wallet portfolio value, traded market count, open positions, and recent trades
 - **Nostr Protocol**: NIP-01 (basic), NIP-17 (private DMs), NIP-04 (compatibility path)
 
 ## Development
@@ -170,7 +191,9 @@ src/
 │   ├── search.rs
 │   ├── price.rs
 │   ├── trending.rs
+│   ├── closing.rs
 │   ├── market.rs
+│   ├── portfolio.rs
 │   ├── alert_add.rs
 │   ├── alert_list.rs
 │   ├── alert_remove.rs
@@ -212,7 +235,7 @@ RUST_LOG=polynostr=trace cargo run  # Very verbose
 
 - **Phase 1** (✅ Complete): Basic read-only bot with search, price, trending commands
 - **Phase 2** (✅ Complete): Real-time price alerts with persistent subscriptions and DM notifications
-- **Phase 3** (Planned): User portfolio tracking by wallet address
+- **Phase 3** (✅ Complete): User portfolio tracking by wallet address
 - **Phase 4** (Planned): Trading commands with server-side EVM signer
 - **Phase 5** (Planned): Optional web dashboard
 
