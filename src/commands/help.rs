@@ -9,6 +9,9 @@ pub fn help_text() -> String {
          /market <slug>                  Detailed market information\n\
          /trending                       Top active markets\n\
          /closing                        Markets closing in next 24 hours\n\
+         /portfolio <address> [limit]    Portfolio snapshot (value + positions + trades)\n\
+         /positions <address> [limit]    Open positions by wallet\n\
+         /trades <address> [limit]       Recent trades by wallet\n\
          /alert add <slug> <rule> <v>   Create alert (rules: above/below/move)\n\
          /alert list                     List your alerts\n\
          /alert remove <id>              Remove alert\n\
@@ -20,6 +23,9 @@ pub fn help_text() -> String {
          Examples:\n\
          /search bitcoin\n\
          /price will-bitcoin-hit-100k\n\
+         /portfolio 0x56687bf447db6ffa42ffe2204a05edaa20f55839\n\
+         /positions 0x56687bf447db6ffa42ffe2204a05edaa20f55839 8\n\
+         /trades 0x56687bf447db6ffa42ffe2204a05edaa20f55839 8\n\
          /alert add will-bitcoin-hit-100k above 52\n\
          /alert list",
     )

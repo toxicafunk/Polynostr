@@ -13,7 +13,7 @@ use alerts::{
 };
 use config::Config;
 use nostr_sdk::prelude::*;
-use polymarket::gamma::GammaClient;
+use polymarket::{data::DataClient, gamma::GammaClient};
 use tracing::info;
 
 #[tokio::main]
@@ -57,6 +57,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
     info!("Connected to relays");
 
     let gamma = Arc::new(GammaClient::new());
+    let data = Arc::new(DataClient::new());
 
     let repo = Arc::new(SqliteAlertRepository::new(&config.alert_db_path)?);
     let polling_source =
@@ -98,7 +99,7 @@ async fn main() -> std::result::Result<(), Box<dyn std::error::Error>> {
         "Bot is online! Send a DM or mention this pubkey to interact."
     );
 
-    let bot_result = bot::run(client.clone(), gamma, alert_manager).await;
+    let bot_result = bot::run(client.clone(), gamma, data, alert_manager).await;
 
     manager_task.abort();
     let _ = manager_task.await;

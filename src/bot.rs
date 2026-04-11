@@ -6,11 +6,13 @@ use tracing::{error, info, warn};
 use crate::alerts::manager::AlertManager;
 use crate::alerts::model::DeliveryChannel;
 use crate::commands;
+use crate::polymarket::data::DataClient;
 use crate::polymarket::gamma::GammaClient;
 
 pub async fn run(
     client: Arc<Client>,
     gamma: Arc<GammaClient>,
+    data: Arc<DataClient>,
     alert_manager: Arc<AlertManager>,
 ) -> Result<()> {
     let keys = client.signer().await?;
@@ -45,6 +47,7 @@ pub async fn run(
         .handle_notifications(|notification| {
             let client = client.clone();
             let gamma = gamma.clone();
+            let data = data.clone();
             let alert_manager = alert_manager.clone();
             async move {
                 match notification {
@@ -57,13 +60,13 @@ pub async fn run(
                         );
                         match event.kind {
                             Kind::GiftWrap => {
-                                handle_gift_wrap(client, gamma, alert_manager, &event).await;
+                                handle_gift_wrap(client, gamma, data, alert_manager, &event).await;
                             }
                             Kind::EncryptedDirectMessage => {
-                                handle_nip04_dm(client, gamma, alert_manager, &event).await;
+                                handle_nip04_dm(client, gamma, data, alert_manager, &event).await;
                             }
                             Kind::TextNote => {
-                                handle_mention(client, gamma, alert_manager, &event).await;
+                                handle_mention(client, gamma, data, alert_manager, &event).await;
                             }
                             _ => info!(kind = ?event.kind, "Received unsupported event kind"),
                         }
@@ -86,6 +89,7 @@ pub async fn run(
 async fn handle_gift_wrap(
     client: Arc<Client>,
     gamma: Arc<GammaClient>,
+    data: Arc<DataClient>,
     alert_manager: Arc<AlertManager>,
     event: &Event,
 ) {
@@ -102,6 +106,7 @@ async fn handle_gift_wrap(
 
                 let response = commands::handle_command(
                     &gamma,
+                    &data,
                     alert_manager,
                     Some(sender.to_hex()),
                     DeliveryChannel::Nip17,
@@ -123,6 +128,7 @@ async fn handle_gift_wrap(
 async fn handle_nip04_dm(
     client: Arc<Client>,
     gamma: Arc<GammaClient>,
+    data: Arc<DataClient>,
     alert_manager: Arc<AlertManager>,
     event: &Event,
 ) {
@@ -131,6 +137,7 @@ async fn handle_nip04_dm(
             Ok(decrypted_content) => {
                 let response = commands::handle_command(
                     &gamma,
+                    &data,
                     alert_manager,
                     Some(event.pubkey.to_hex()),
                     DeliveryChannel::Nip04,
@@ -162,6 +169,7 @@ async fn handle_nip04_dm(
 async fn handle_mention(
     client: Arc<Client>,
     gamma: Arc<GammaClient>,
+    data: Arc<DataClient>,
     alert_manager: Arc<AlertManager>,
     event: &Event,
 ) {
@@ -185,6 +193,7 @@ async fn handle_mention(
 
     let response = commands::handle_command(
         &gamma,
+        &data,
         alert_manager,
         Some(author.to_hex()),
         DeliveryChannel::Nip17,

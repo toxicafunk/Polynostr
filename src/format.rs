@@ -1,4 +1,6 @@
 use chrono::{DateTime, Utc};
+use polymarket_client_sdk::data::types::Side;
+use polymarket_client_sdk::data::types::response::{Position, Trade};
 use polymarket_client_sdk::gamma::types::response::{Event, Market, SearchResults};
 use polymarket_client_sdk::types::Decimal;
 
@@ -43,7 +45,6 @@ fn format_duration(duration: chrono::Duration) -> String {
         format!("{}m", minutes)
     }
 }
-
 
 pub fn format_search_results(results: &SearchResults, query: &str) -> String {
     let mut output = format!("Search results for \"{query}\":\n\n");
@@ -322,11 +323,7 @@ pub fn format_closing_events(events: &[Event]) -> String {
             .unwrap_or_else(|| String::from("N/A"));
 
         // Get slug
-        let slug = event
-            .slug
-            .as_ref()
-            .map(|s| s.as_str())
-            .unwrap_or("unknown");
+        let slug = event.slug.as_ref().map(|s| s.as_str()).unwrap_or("unknown");
 
         output.push_str(&format!(
             "{}. {}\n   Closes in {}  |  Vol 24h: {}  |  Yes: {}\n   Slug: {}\n\n",
@@ -342,6 +339,138 @@ pub fn format_closing_events(events: &[Event]) -> String {
     output.trim_end().to_owned()
 }
 
+fn format_trade_side(side: &Side) -> String {
+    match side {
+        Side::Buy => "BUY".to_owned(),
+        Side::Sell => "SELL".to_owned(),
+        Side::Unknown(raw) => raw.to_uppercase(),
+        _ => "UNKNOWN".to_owned(),
+    }
+}
+
+fn format_usd_signed(value: &Decimal) -> String {
+    let amount = value.to_string().parse::<f64>().unwrap_or(0.0);
+    let abs = amount.abs();
+    let scaled = if abs >= 1_000_000.0 {
+        format!("${:.2}M", abs / 1_000_000.0)
+    } else if abs >= 1_000.0 {
+        format!("${:.2}K", abs / 1_000.0)
+    } else {
+        format!("${abs:.2}")
+    };
+
+    if amount < 0.0 {
+        format!("-{scaled}")
+    } else {
+        format!("+{scaled}")
+    }
+}
+
+fn format_percent_signed(value: &Decimal) -> String {
+    let pct = value.to_string().parse::<f64>().unwrap_or(0.0) * 100.0;
+    format!("{pct:+.2}%")
+}
+
+fn format_trade_timestamp(timestamp: i64) -> String {
+    DateTime::<Utc>::from_timestamp(timestamp, 0)
+        .map(|dt| dt.format("%Y-%m-%d %H:%MZ").to_string())
+        .unwrap_or_else(|| "unknown".to_owned())
+}
+
+fn compact_wallet(address: &str) -> String {
+    if address.len() <= 14 {
+        return address.to_owned();
+    }
+
+    format!("{}...{}", &address[..8], &address[address.len() - 6..])
+}
+
+pub fn format_positions(address: &str, positions: &[Position]) -> String {
+    if positions.is_empty() {
+        return format!("No open positions found for {}.", compact_wallet(address));
+    }
+
+    let mut output = format!("Open Positions — {}\n\n", compact_wallet(address));
+
+    for (index, position) in positions.iter().enumerate() {
+        output.push_str(&format!(
+            "{}. {} ({})\n",
+            index + 1,
+            position.title,
+            position.outcome
+        ));
+        output.push_str(&format!(
+            "   Size: {}  |  Price: {}  |  Value: {}\n",
+            position.size,
+            format_price_cents(&position.cur_price),
+            format_volume(&position.current_value)
+        ));
+        output.push_str(&format!(
+            "   PnL: {} ({})\n",
+            format_usd_signed(&position.cash_pnl),
+            format_percent_signed(&position.percent_pnl)
+        ));
+        output.push_str(&format!("   Slug: {}\n\n", position.slug));
+    }
+
+    output.trim_end().to_owned()
+}
+
+pub fn format_trades(address: &str, trades: &[Trade]) -> String {
+    if trades.is_empty() {
+        return format!("No recent trades found for {}.", compact_wallet(address));
+    }
+
+    let mut output = format!("Recent Trades — {}\n\n", compact_wallet(address));
+
+    for (index, trade) in trades.iter().enumerate() {
+        output.push_str(&format!(
+            "{}. {} {} ({})\n",
+            index + 1,
+            format_trade_side(&trade.side),
+            trade.title,
+            trade.outcome
+        ));
+        output.push_str(&format!(
+            "   Price: {}  |  Size: {}  |  Time: {}\n",
+            format_price_cents(&trade.price),
+            trade.size,
+            format_trade_timestamp(trade.timestamp)
+        ));
+        output.push_str(&format!("   Slug: {}\n\n", trade.slug));
+    }
+
+    output.trim_end().to_owned()
+}
+
+pub fn format_portfolio_overview(
+    address: &str,
+    total_value: Option<&Decimal>,
+    traded_markets: Option<i32>,
+    positions: &[Position],
+    trades: &[Trade],
+) -> String {
+    let mut output = format!("Portfolio — {}\n", compact_wallet(address));
+    output.push_str("────────────────────────\n");
+
+    let value_display = total_value
+        .map(format_volume)
+        .unwrap_or_else(|| "N/A".to_owned());
+    let traded_display = traded_markets
+        .map(|count| count.to_string())
+        .unwrap_or_else(|| "N/A".to_owned());
+
+    output.push_str(&format!("Estimated Value: {}\n", value_display));
+    output.push_str(&format!("Markets Traded: {}\n", traded_display));
+    output.push_str(&format!("Open Positions: {}\n", positions.len()));
+    output.push_str(&format!("Recent Trades: {}\n\n", trades.len()));
+
+    output.push_str(&format_positions(address, positions));
+    output.push_str("\n\n");
+    output.push_str(&format_trades(address, trades));
+
+    output
+}
 
 pub fn format_alert_created(alert: &AlertSubscription) -> String {
     format!(
@@ -468,4 +597,3 @@ mod tests {
     // non-exhaustive struct from the SDK. The formatter logic is validated through
     // integration testing with real API responses.
 }
-

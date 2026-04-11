@@ -7,6 +7,7 @@ pub mod alert_test;
 pub mod closing;
 pub mod help;
 pub mod market;
+pub mod portfolio;
 pub mod price;
 pub mod search;
 pub mod trending;
@@ -15,6 +16,7 @@ use std::sync::Arc;
 
 use crate::alerts::manager::AlertManager;
 use crate::alerts::model::DeliveryChannel;
+use crate::polymarket::data::DataClient;
 use crate::polymarket::gamma::GammaClient;
 
 /// Parse a message and route to the appropriate command handler.
@@ -22,6 +24,7 @@ use crate::polymarket::gamma::GammaClient;
 /// Commands start with `/`. If no recognized command is found, returns help text.
 pub async fn handle_command(
     gamma: &GammaClient,
+    data: &DataClient,
     manager: Arc<AlertManager>,
     sender_pubkey_hex: Option<String>,
     channel: DeliveryChannel,
@@ -66,6 +69,9 @@ pub async fn handle_command(
         "/search" | "search" => search::handle(gamma, args).await,
         "/price" | "price" => price::handle(gamma, args).await,
         "/market" | "market" => market::handle(gamma, args).await,
+        "/positions" | "positions" => portfolio::handle_positions(data, args).await,
+        "/trades" | "trades" => portfolio::handle_trades(data, args).await,
+        "/portfolio" | "portfolio" => portfolio::handle_portfolio(data, args).await,
         "/trending" | "trending" => trending::handle(gamma).await,
         "/closing" | "closing" => closing::handle(gamma).await,
         "/help" | "help" | "/start" => help::help_text(),
